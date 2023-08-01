@@ -167,6 +167,10 @@ operator-sdk: $(OPERATOR_SDK)
 kustomize: $(KUSTOMIZE)
 	(cd $(OPERATOR_SDK_PROJECT_PATH) && $(KUSTOMIZE) $(KUSTOMIZE_ARGS))
 
+tools: $(BINGO) ## Installs all the tools
+	# This will be replaced by `go build tools` once support for tool management lands in go
+	$(BINGO) get
+
 ##@ Build
 
 export VERSION           ?= $(shell git describe --tags --always --dirty)
