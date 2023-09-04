@@ -12,6 +12,7 @@ import (
 	"github.com/operator-framework/operator-registry/alpha/property"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/operator-framework/operator-controller/internal/catalogmetadata"
 	"github.com/operator-framework/operator-controller/internal/resolution/entities"
 )
 
@@ -96,13 +97,13 @@ func getEntities(ctx context.Context, cl client.Client) (input.EntityList, error
 	return allEntitiesList, nil
 }
 
-func MetadataToEntities(catalogName string, channels []declcfg.Channel, bundles []declcfg.Bundle) (input.EntityList, error) {
+func MetadataToEntities(catalogName string, channels []*catalogmetadata.Channel, bundles []*catalogmetadata.Bundle) (input.EntityList, error) {
 	entityList := input.EntityList{}
 
-	bundlesMap := map[string]*declcfg.Bundle{}
+	bundlesMap := map[string]*catalogmetadata.Bundle{}
 	for i := range bundles {
 		bundleKey := fmt.Sprintf("%s-%s", bundles[i].Package, bundles[i].Name)
-		bundlesMap[bundleKey] = &bundles[i]
+		bundlesMap[bundleKey] = bundles[i]
 	}
 
 	for _, ch := range channels {
@@ -152,39 +153,27 @@ func MetadataToEntities(catalogName string, channels []declcfg.Channel, bundles 
 	return entityList, nil
 }
 
-func fetchCatalogMetadata(ctx context.Context, cl client.Client, catalogName string) ([]declcfg.Channel, []declcfg.Bundle, error) {
-	channels, err := fetchCatalogMetadataByScheme[declcfg.Channel](ctx, cl, declcfg.SchemaChannel, catalogName)
+func fetchCatalogMetadata(ctx context.Context, cl client.Client, catalogName string) ([]*catalogmetadata.Channel, []*catalogmetadata.Bundle, error) {
+	var cmList catalogd.CatalogMetadataList
+	err := cl.List(ctx, &cmList, client.MatchingLabels{"catalog": catalogName, "schema": declcfg.SchemaChannel})
 	if err != nil {
 		return nil, nil, err
 	}
-	bundles, err := fetchCatalogMetadataByScheme[declcfg.Bundle](ctx, cl, declcfg.SchemaBundle, catalogName)
+
+	channels, err := catalogmetadata.Unmarshal[catalogmetadata.Channel](cmList.Items)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = cl.List(ctx, &cmList, client.MatchingLabels{"catalog": catalogName, "schema": declcfg.SchemaBundle})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	bundles, err := catalogmetadata.Unmarshal[catalogmetadata.Bundle](cmList.Items)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return channels, bundles, nil
-}
-
-type declcfgSchema interface {
-	declcfg.Package | declcfg.Bundle | declcfg.Channel
-}
-
-// TODO: Cleanup once https://github.com/golang/go/issues/45380 implemented
-// We should be able to get rid of the schema arg and switch based on the type passed to this generic
-func fetchCatalogMetadataByScheme[T declcfgSchema](ctx context.Context, cl client.Client, schema, catalogName string) ([]T, error) {
-	cmList := catalogd.CatalogMetadataList{}
-	if err := cl.List(ctx, &cmList, client.MatchingLabels{"schema": schema, "catalog": catalogName}); err != nil {
-		return nil, err
-	}
-
-	contents := []T{}
-	for _, cm := range cmList.Items {
-		var content T
-		if err := json.Unmarshal(cm.Spec.Content, &content); err != nil {
-			return nil, err
-		}
-		contents = append(contents, content)
-	}
-
-	return contents, nil
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/operator-framework/deppy/pkg/deppy/input"
 	"github.com/operator-framework/operator-registry/alpha/action"
 
+	"github.com/operator-framework/operator-controller/internal/catalogmetadata"
 	"github.com/operator-framework/operator-controller/internal/resolution/entitysources"
 )
 
@@ -96,8 +97,18 @@ func (es *indexRefEntitySource) entities(ctx context.Context) (input.EntityList,
 			return nil, err
 		}
 
+		var channels []*catalogmetadata.Channel
+		for i := range cfg.Channels {
+			channels = append(channels, &catalogmetadata.Channel{Channel: cfg.Channels[i]})
+		}
+
+		var bundles []*catalogmetadata.Bundle
+		for i := range cfg.Bundles {
+			bundles = append(bundles, &catalogmetadata.Bundle{Bundle: cfg.Bundles[i]})
+		}
+
 		// TODO: update empty catalog name string to be catalog name once we support multiple catalogs in CLI
-		entities, err := entitysources.MetadataToEntities("", cfg.Channels, cfg.Bundles)
+		entities, err := entitysources.MetadataToEntities("", channels, bundles)
 		if err != nil {
 			return nil, err
 		}
