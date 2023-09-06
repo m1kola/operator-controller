@@ -3,8 +3,6 @@ package catalogmetadata
 import (
 	mmsemver "github.com/Masterminds/semver/v3"
 	bsemver "github.com/blang/semver/v4"
-
-	olmentity "github.com/operator-framework/operator-controller/internal/resolution/entities"
 )
 
 // TODO: Move somewhere nice. Probably into a ./predicates package
@@ -54,7 +52,7 @@ func InChannel(channelName string) Predicate[Bundle] {
 	}
 }
 
-func ProvidesGVK(gvk *olmentity.GVK) Predicate[Bundle] {
+func ProvidesGVK(gvk *GVK) Predicate[Bundle] {
 	return func(bundle *Bundle) bool {
 		providedGVKs, err := bundle.ProvidedGVKs()
 		if err != nil {
