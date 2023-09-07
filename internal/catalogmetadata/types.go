@@ -31,7 +31,8 @@ func (g GVK) String() string {
 
 type Bundle struct {
 	declcfg.Bundle
-	InChannels []*Channel
+	CatalogName string
+	InChannels  []*Channel
 
 	mu sync.RWMutex
 	// these properties are lazy loaded as they are requested
