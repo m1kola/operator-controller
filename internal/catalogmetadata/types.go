@@ -43,6 +43,13 @@ type Bundle struct {
 	requiredGVKs  []GVK
 }
 
+func (b *Bundle) PackageName() (string, error) {
+	if err := b.loadPackage(); err != nil {
+		return "", err
+	}
+	return b.bundlePackage.PackageName, nil
+}
+
 func (b *Bundle) Version() (*bsemver.Version, error) {
 	if err := b.loadPackage(); err != nil {
 		return nil, err
@@ -73,7 +80,8 @@ func (b *Bundle) loadPackage() error {
 			return err
 		}
 		b.bundlePackage = &bundlePackage
-
+	}
+	if b.semVersion == nil {
 		semVer, err := bsemver.Parse(b.bundlePackage.Version)
 		if err != nil {
 			return fmt.Errorf("could not parse semver %q for bundle '%s': %s", b.bundlePackage.Version, b.Name, err)
