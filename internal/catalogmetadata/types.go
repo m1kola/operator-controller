@@ -11,6 +11,8 @@ import (
 	"github.com/operator-framework/operator-registry/alpha/property"
 )
 
+const PropertyBundleMediaType = "olm.bundle.mediatype"
+
 type Schemas interface {
 	Package | Bundle | Channel
 }
@@ -39,6 +41,11 @@ func (g GVKRequired) AsGVK() GVK {
 	return GVK(g)
 }
 
+type PackageRequired struct {
+	property.PackageRequired
+	SemverRange *bsemver.Range `json:"-"`
+}
+
 type Bundle struct {
 	declcfg.Bundle
 	CatalogName string
@@ -46,11 +53,13 @@ type Bundle struct {
 
 	mu sync.RWMutex
 	// these properties are lazy loaded as they are requested
-	propertiesMap map[string]property.Property
-	bundlePackage *property.Package
-	semVersion    *bsemver.Version
-	providedGVKs  []GVK
-	requiredGVKs  []GVKRequired
+	propertiesMap    map[string]property.Property
+	bundlePackage    *property.Package
+	semVersion       *bsemver.Version
+	providedGVKs     []GVK
+	requiredGVKs     []GVKRequired
+	requiredPackages []PackageRequired
+	mediaType        string
 }
 
 func (b *Bundle) Version() (*bsemver.Version, error) {
@@ -72,6 +81,21 @@ func (b *Bundle) RequiredGVKs() ([]GVKRequired, error) {
 		return nil, err
 	}
 	return b.requiredGVKs, nil
+}
+
+func (b *Bundle) RequiredPackages() ([]PackageRequired, error) {
+	if err := b.loadRequiredPackages(); err != nil {
+		return nil, err
+	}
+	return b.requiredPackages, nil
+}
+
+func (b *Bundle) MediaType() (string, error) {
+	if err := b.loadMediaType(); err != nil {
+		return "", err
+	}
+
+	return b.mediaType, nil
 }
 
 func (b *Bundle) loadPackage() error {
@@ -120,7 +144,48 @@ func (b *Bundle) loadRequiredGVKs() error {
 	return nil
 }
 
+func (b *Bundle) loadRequiredPackages() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.requiredPackages == nil {
+		requiredPackages, err := loadFromProps[[]PackageRequired](b, property.TypePackageRequired, false)
+		if err != nil {
+			return fmt.Errorf("error determining bundle required packages for bundle %q: %s", b.Name, err)
+		}
+		for _, requiredPackage := range requiredPackages {
+			semverRange, err := bsemver.ParseRange(requiredPackage.VersionRange)
+			if err != nil {
+				return fmt.Errorf(
+					"error parsing bundle required package semver range for bundle %q (required package %q): %s",
+					b.Name,
+					requiredPackage.PackageName,
+					err,
+				)
+			}
+			requiredPackage.SemverRange = &semverRange
+		}
+		b.requiredPackages = requiredPackages
+	}
+	return nil
+}
+
+func (b *Bundle) loadMediaType() error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.mediaType == "" {
+		mediaType, err := loadFromProps[string](b, PropertyBundleMediaType, false)
+		if err != nil {
+			return fmt.Errorf("error determining bundle mediatype for bundle %q: %s", b.Name, err)
+		}
+		b.mediaType = mediaType
+	}
+	return nil
+}
+
 func (b *Bundle) propertyByType(propType string) *property.Property {
+	// TODO: Get rid of the map and support multiple properties with the same type
+	// Some property types such as `olm.gvk` and `olm.gvk.required`
+	// can appear in the b.Properties list multiple
 	if b.propertiesMap == nil {
 		b.propertiesMap = make(map[string]property.Property)
 		for _, prop := range b.Properties {
