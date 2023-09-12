@@ -121,11 +121,15 @@ func run(ctx context.Context, packageName, packageVersion, packageChannel, catal
 		clientBuilder.WithRuntimeObjects(objects...)
 	}
 
+	clientBuilder, err := newCatalogmetadataReader(catalogRef, clientBuilder).run(ctx)
+	if err != nil {
+		return err
+	}
+
 	cl := clientBuilder.Build()
 	catalogClient := catalogclient.NewClient(cl)
 
 	resolver := solver.NewDeppySolver(
-		// TODO: Add a variable source to replace `indexRefEntitySource` which will read from catalogRef
 		nil,
 		append(
 			variablesources.NestedVariableSource{newPackageVariableSource(catalogClient, packageName, packageVersion, packageChannel)},
