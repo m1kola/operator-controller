@@ -7,6 +7,10 @@ import (
 
 	bsemver "github.com/blang/semver/v4"
 
+	"github.com/operator-framework/deppy/pkg/deppy"
+	"github.com/operator-framework/deppy/pkg/deppy/input"
+	"github.com/operator-framework/operator-controller/internal/resolution/entities"
+	"github.com/operator-framework/operator-controller/internal/resolution/variables"
 	"github.com/operator-framework/operator-registry/alpha/declcfg"
 	"github.com/operator-framework/operator-registry/alpha/property"
 )
@@ -72,6 +76,30 @@ func (b *Bundle) RequiredGVKs() ([]GVKRequired, error) {
 		return nil, err
 	}
 	return b.requiredGVKs, nil
+}
+
+func (b *Bundle) ToVariables() []variables.BundleVariable {
+	var bundleVars []variables.BundleVariable
+	var propertiesMap map[string]string
+
+	for propKey, propVal := range b.propertiesMap {
+		// TODO probably shouldn't do this every time
+		propertiesMap[propKey] = propVal.String()
+	}
+
+	for _, channel := range b.InChannels {
+		catalogScopedEntryName := fmt.Sprintf("%s-%s", channel.Name, b.Name)
+		// TODO this can be cleaned up significantly when we don't an entity to create the variable
+		bundleVars = append(bundleVars, *variables.NewBundleVariable(entities.NewBundleEntity(
+			&input.Entity{
+				ID:         deppy.IdentifierFromString(fmt.Sprintf("%s%s%s", catalogScopedEntryName, b.Package, b.CatalogName)),
+				Properties: propertiesMap,
+			}),
+			// TODO dependencies?
+			make([]*entities.BundleEntity, 0)))
+	}
+
+	return bundleVars
 }
 
 func (b *Bundle) loadPackage() error {
