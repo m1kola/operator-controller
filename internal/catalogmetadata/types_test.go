@@ -78,7 +78,11 @@ func TestBundle(t *testing.T) {
 			Properties: []property.Property{
 				{
 					Type:  property.TypeGVK,
-					Value: json.RawMessage(`[{"group":"foo.io","kind":"Foo","version":"v1"},{"group":"bar.io","kind":"Bar","version":"v1alpha1"}]`),
+					Value: json.RawMessage(`{"group":"foo.io","kind":"Foo","version":"v1"}`),
+				},
+				{
+					Type:  property.TypeGVK,
+					Value: json.RawMessage(`{"group":"bar.io","kind":"Bar","version":"v1alpha1"}`),
 				},
 			},
 		}}
@@ -117,7 +121,11 @@ func TestBundle(t *testing.T) {
 			Properties: []property.Property{
 				{
 					Type:  property.TypeGVKRequired,
-					Value: json.RawMessage(`[{"group":"foo.io","kind":"Foo","version":"v1"},{"group":"bar.io","kind":"Bar","version":"v1alpha1"}]`),
+					Value: json.RawMessage(`{"group":"foo.io","kind":"Foo","version":"v1"}`),
+				},
+				{
+					Type:  property.TypeGVKRequired,
+					Value: json.RawMessage(`{"group":"bar.io","kind":"Bar","version":"v1alpha1"}`),
 				},
 			},
 		}}
