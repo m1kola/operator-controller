@@ -11,7 +11,11 @@ import (
 	"github.com/operator-framework/operator-registry/alpha/property"
 )
 
-const PropertyBundleMediaType = "olm.bundle.mediatype"
+const (
+	MediaTypePlain          = "plain+v0"
+	MediaTypeRegistry       = "registry+v1"
+	PropertyBundleMediaType = "olm.bundle.mediatype"
+)
 
 type Schemas interface {
 	Package | Bundle | Channel
@@ -56,8 +60,6 @@ type Bundle struct {
 	propertiesMap    map[string]property.Property
 	bundlePackage    *property.Package
 	semVersion       *bsemver.Version
-	providedGVKs     []GVK
-	requiredGVKs     []GVKRequired
 	requiredPackages []PackageRequired
 	mediaType        string
 }
@@ -67,20 +69,6 @@ func (b *Bundle) Version() (*bsemver.Version, error) {
 		return nil, err
 	}
 	return b.semVersion, nil
-}
-
-func (b *Bundle) ProvidedGVKs() ([]GVK, error) {
-	if err := b.loadProvidedGVKs(); err != nil {
-		return nil, err
-	}
-	return b.providedGVKs, nil
-}
-
-func (b *Bundle) RequiredGVKs() ([]GVKRequired, error) {
-	if err := b.loadRequiredGVKs(); err != nil {
-		return nil, err
-	}
-	return b.requiredGVKs, nil
 }
 
 func (b *Bundle) RequiredPackages() ([]PackageRequired, error) {
@@ -114,32 +102,6 @@ func (b *Bundle) loadPackage() error {
 			return fmt.Errorf("could not parse semver %q for bundle '%s': %s", b.bundlePackage.Version, b.Name, err)
 		}
 		b.semVersion = &semVer
-	}
-	return nil
-}
-
-func (b *Bundle) loadProvidedGVKs() error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.providedGVKs == nil {
-		providedGVKs, err := loadFromProps[[]GVK](b, property.TypeGVK, false)
-		if err != nil {
-			return fmt.Errorf("error determining provided GVKs for bundle %q: %s", b.Name, err)
-		}
-		b.providedGVKs = providedGVKs
-	}
-	return nil
-}
-
-func (b *Bundle) loadRequiredGVKs() error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	if b.requiredGVKs == nil {
-		requiredGVKs, err := loadFromProps[[]GVKRequired](b, property.TypeGVKRequired, false)
-		if err != nil {
-			return fmt.Errorf("error determining required GVKs for bundle %q: %s", b.Name, err)
-		}
-		b.requiredGVKs = requiredGVKs
 	}
 	return nil
 }
