@@ -109,28 +109,6 @@ func (b *BundlesAndDepsVariableSource) filterBundleDependencies(allBundles []*ca
 					added[id] = struct{}{}
 				}
 			}
-
-		}
-	}
-
-	// gather required gvk dependencies
-	// todo(perdasilva): disambiguate between not found and actual errors
-	gvkDependencies, _ := bundle.RequiredGVKs()
-	for i := 0; i < len(gvkDependencies); i++ {
-		providedGvk := gvkDependencies[i].AsGVK()
-		gvkDependencyBundles := catalogfilter.Filter(allBundles, catalogfilter.ProvidesGVK(&providedGvk))
-		if len(gvkDependencyBundles) == 0 {
-			return nil, fmt.Errorf("could not find gvk dependencies for bundle %q", bundle.Name)
-		}
-		for i := 0; i < len(gvkDependencyBundles); i++ {
-			bundle := gvkDependencyBundles[i]
-			for _, id := range olmvariables.BundleToBundleVariableIDs(bundle) {
-				if _, ok := added[id]; !ok {
-					dependencies = append(dependencies, bundle)
-					added[id] = struct{}{}
-				}
-			}
-
 		}
 	}
 
